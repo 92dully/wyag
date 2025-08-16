@@ -186,4 +186,5 @@ class gitObject (object):
         raise Exception("Unimplemented!")
     
     def init (self):
-        pass
+        pass # Just do nothing. This is a reasonable default!
+
