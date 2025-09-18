@@ -473,7 +473,7 @@ def tree_parse_one(raw, start=0):
     # Read the mode
     mode = raw[start:x]
     if len(mode) == 5:
-        # Normilize to six bytes
+        # Normalize to six bytes.
         mode = b"0" + mode
 
     # Find the NULL terminator of the path
@@ -481,7 +481,7 @@ def tree_parse_one(raw, start=0):
     # and read the path
     path = raw[x+1:y]
 
-    # Read the SHA...
+    # Read the SHA…
     raw_sha = int.from_bytes(raw[y+1:y+21], "big")
     # and convert it into an hex string, padded to 40 chars
     # with zeros if needed.
@@ -493,7 +493,8 @@ def tree_parse(raw):
     max = len(raw)
     ret = list()
     while pos < max:
-        ret. append(data)
+        pos, data = tree_parse_one(raw, pos)
+        ret.append(data)
 
     return ret
 
@@ -507,7 +508,7 @@ def tree_leaf_sort_key(leaf):
         return leaf.path
     else:
         return leaf.path + "/"
-    
+
 def tree_serialize(obj):
     obj.items.sort(key=tree_leaf_sort_key)
     ret = b''
@@ -528,7 +529,7 @@ class GitTree(GitObject):
 
     def serialize(self):
         return tree_serialize(self)
-    
+
     def init(self):
         self.items = list()
 
@@ -561,12 +562,12 @@ def ls_tree(repo, ref, recursive=None, prefix=""):
             case b'16': type = "commit" # A submodule
             case _: raise Exception(f"Weird tree leaf mode {item.mode}")
 
-        if not (recursive and type=='tree'): #This is a leaf
+        if not (recursive and type=='tree'): # This is a leaf
             print(f"{'0' * (6 - len(item.mode)) + item.mode.decode("ascii")} {type} {item.sha}\t{os.path.join(prefix, item.path)}")
-        else: # This is a branch recurse
+        else: # This is a branch, recurse
             ls_tree(repo, item.sha, recursive, os.path.join(prefix, item.path))
 
-argsp = argsubparsers.add_parser("cheakout", help="Cheakout a commit inside of a directory")
+argsp = argsubparsers.add_parser("checkout", help="Checkout a commit inside of a directory.")
 
 argsp.add_argument("commit",
                    help="The commit or tree to checkout.")
@@ -583,11 +584,11 @@ def cmd_checkout(args):
     if obj.fmt == b'commit':
         obj = object_read(repo, obj.kvlm[b'tree'].decode("ascii"))
 
-    # Verift that the path is an empty directory
+    # Verify that path is an empty directory
     if os.path.exists(args.path):
         if not os.path.isdir(args.path):
-            raise Exception(f"Not a diectory {args.path}!")
-        if os.lisdir(args.path):
+            raise Exception(f"Not a directory {args.path}!")
+        if os.listdir(args.path):
             raise Exception(f"Not empty {args.path}!")
     else:
         os.makedirs(args.path)
@@ -602,7 +603,7 @@ def tree_checkout(repo, tree, path):
         if obj.fmt == b'tree':
             os.mkdir(dest)
             tree_checkout(repo, obj, dest)
-        elif ojb.fmt == b'blob':
+        elif obj.fmt == b'blob':
             # @TODO Support symlinks (identified by mode 12****)
             with open(dest, 'wb') as f:
                 f.write(obj.blobdata)
