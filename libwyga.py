@@ -618,15 +618,15 @@ def ref_resolve(repo, ref):
     # (since there's no commit for it to refer to).
     if not os.path.isfile(path):
         return None
-    
+
     with open(path, 'r') as fp:
-        data = fp.read() [:-1]
+        data = fp.read()[:-1]
         # Drop final \n ^^^^^
     if data.startswith("ref: "):
         return ref_resolve(repo, data[5:])
     else:
         return data
-    
+
 def ref_list(repo, path=None):
     if not path:
         path = repo_dir(repo, "refs")
@@ -638,11 +638,12 @@ def ref_list(repo, path=None):
         if os.path.isdir(can):
             ret[f] = ref_list(repo, can)
         else:
-            ref[f] = ref_reslove(repo, can)
+            ret[f] = ref_resolve(repo, can)
 
     return ret
 
-argsp = argsubparsers.add_parser("show-ref", help="list refrences.")
+argsp = argsubparsers.add_parser("show-ref", help="List references.")
+
 def cmd_show_ref(args):
     repo = repo_find()
     refs = ref_list(repo)
@@ -664,8 +665,7 @@ class GitTag(GitCommit):
 
 argsp = argsubparsers.add_parser(
     "tag",
-    help="Liat and creat tags"
-)
+    help="List and create tags")
 
 argsp.add_argument("-a",
                    action="store_true",
@@ -678,28 +678,27 @@ argsp.add_argument("name",
 
 argsp.add_argument("object",
                    default="HEAD",
-                   nargs"?",
-                   help="The object the new tag will point to.")
+                   nargs="?",
+                   help="The object the new tag will point to")
 
 def cmd_tag(args):
-    repo= repo_find()
+    repo = repo_find()
 
     if args.name:
-        tag_creat(repo,
-                  args.anme,
-                  args.object,
-                  creat_tag_object = args.create_tag_object)
-        
+        tag_create(repo,
+                   args.name,
+                   args.object,
+                   create_tag_object = args.create_tag_object)
     else:
         refs = ref_list(repo)
         show_ref(repo, refs["tags"], with_hash=False)
 
-def tag_create(repo, anme, ref, create_tag_object=False):
-    # get the GitObject from the object refrence
+def tag_create(repo, name, ref, create_tag_object=False):
+    # get the GitObject from the object reference
     sha = object_find(repo, ref)
 
     if create_tag_object:
-        #create tag object(commit)
+        # create tag object (commit)
         tag = GitTag()
         tag.kvlm = dict()
         tag.kvlm[b'object'] = sha.encode()
@@ -715,13 +714,13 @@ def tag_create(repo, anme, ref, create_tag_object=False):
         ref_create(repo, "tags/" + name, tag_sha)
     else:
         # create lightweight tag (ref)
-        ref_create(repo, "tage/" + name, sha)
+        ref_create(repo, "tags/" + name, sha)
 
 def ref_create(repo, ref_name, sha):
     with open(repo_file(repo, "refs/" + ref_name), 'w') as fp:
         fp.write(sha + "\n")
 
-def object_reslove(repo, name):
+def object_resolve(repo, name):
     """Resolve name to an object hash in repo.
 
 This function is aware of:
@@ -734,36 +733,36 @@ This function is aware of:
     candidates = list()
     hashRE = re.compile(r"^[0-9A-Fa-f]{4,40}$")
 
-    #Empty string? Abort.
+    # Empty string?  Abort.
     if not name.strip():
         return None
-    
-    # Head is nonabiguous
+
+    # Head is nonambiguous
     if name == "HEAD":
         return [ ref_resolve(repo, "HEAD") ]
-    
-    # If it's a hex string, try for a hash
+
+    # If it's a hex string, try for a hash.
     if hashRE.match(name):
         # This may be a hash, either small or full.  4 seems to be the
         # minimal length for git to consider something a short hash.
         # This limit is documented in man git-rev-parse
         name = name.lower()
-        prefix = name [0:2]
-        path = repo_dri(repo, "objects", prefix, mkdir=False)
+        prefix = name[0:2]
+        path = repo_dir(repo, "objects", prefix, mkdir=False)
         if path:
-            rem = name[0:2]
+            rem = name[2:]
             for f in os.listdir(path):
                 if f.startswith(rem):
                     # Notice a string startswith() itself, so this
                     # works for full hashes.
                     candidates.append(prefix + f)
 
-    # Try for refrences.
+    # Try for references.
     as_tag = ref_resolve(repo, "refs/tags/" + name)
     if as_tag: # Did we find a tag?
         candidates.append(as_tag)
 
-    as_branch = ref_resolve(repo, "ref/heads/" + name)
+    as_branch = ref_resolve(repo, "refs/heads/" + name)
     if as_branch: # Did we find a branch?
         candidates.append(as_branch)
 
@@ -773,20 +772,20 @@ This function is aware of:
 
     return candidates
 
-def objects_find(repo, name. fmt=None, follow=True):
-    sha = object_reslove(repo, name)    
+def object_find(repo, name, fmt=None, follow=True):
+    sha = object_resolve(repo, name)
 
     if not sha:
-        raise Exception(f"No such refrence {name}.")
-    
+        raise Exception(f"No such reference {name}.")
+
     if len(sha) > 1:
-        raise Exception("Ambiguous refrence {name}: Candidates are: \n - {'\n - .join(sha)}. ")
-    
+        raise Exception("Ambiguous reference {name}: Candidates are:\n - {'\n - '.join(sha)}.")
+
     sha = sha[0]
 
     if not fmt:
         return sha
-    
+
     while True:
         obj = object_read(repo, sha)
         #     ^^^^^^^^^^^ < this is a bit agressive: we're reading
@@ -796,10 +795,10 @@ def objects_find(repo, name. fmt=None, follow=True):
 
         if obj.fmt == fmt:
             return sha
-        
+
         if not follow:
             return None
-        
+
         # Follow tags
         if obj.fmt == b'tag':
             sha = obj.kvlm[b'object'].decode("ascii")
@@ -807,16 +806,15 @@ def objects_find(repo, name. fmt=None, follow=True):
             sha = obj.kvlm[b'tree'].decode("ascii")
         else:
             return None
-        
+
 argsp = argsubparsers.add_parser(
     "rev-parse",
-    help="Parse revision (or other object) identifiers"
-)
+    help="Parse revision (or other objects) identifiers")
 
 argsp.add_argument("--wyag-type",
                    metavar="type",
                    dest="type",
-                   choices=["blob", "commit", "tag", "tree"], 
+                   choices=["blob", "commit", "tag", "tree"],
                    default=None,
                    help="Specify the expected type")
 
@@ -831,6 +829,4 @@ def cmd_rev_parse(args):
 
     repo = repo_find()
 
-    print (object_find(repo, args, name, fmt, follow=True))
-
-
+    print (object_find(repo, args.name, fmt, follow=True))
