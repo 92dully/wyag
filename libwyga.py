@@ -1232,4 +1232,11 @@ def cmd_status_index_worktree(repo, index):
         # @TODO If a full directory is untracked, we should display
         # its name without its contents.
         if not check_ignore(ignore, f):
-            print(" ", f)    
+            print(" ", f)
+
+# ____        _ _       
+#|  _ \ _   _| | |_   _ 
+#| | | | | | | | | | | |
+#| |_| | |_| | | | |_| |
+#|____/ \__,_|_|_|\__, |
+#                 |___/ 
